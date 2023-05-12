@@ -6,8 +6,19 @@ import logo from '../../assets/images/logo.png';
 import './header.css'
 
 const nav__links = [
-   
-]
+   {
+    path: "/home",
+    display: "Home",
+   },
+   {
+    path: "/about",
+    display: "About",
+   },
+   {
+    path: "/tours",
+    display: "Tours",
+   },
+];
 
 const Header = () => {
 
