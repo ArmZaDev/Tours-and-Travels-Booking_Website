@@ -1,21 +1,25 @@
-import React, {useRef, useState} from 'react';
+import React, {useEffect, useRef, useState, useContext} from 'react';
 import '../styles/tour-detials.css';
 import { Container, Row, Col, Form, ListGroup } from 'reactstrap';
 import {useParams} from 'react-router-dom';
-import tourData from '../assets/data/tours';
 import calculateAvgRating from '../utils/avgRating';
 import avatar from '../assets/images/avatar.jpg';
 import Newsletter from '../shared/Newsletter';
 import Booking from '../components/Booking/Booking';
+import useFetch from './../hooks/useFetch';
+import { BASE_URL } from './../utils/config';
+
+import { AuthContext } from './../context/AuthContext';
 
 const TourDetails = () => {
 
   const {id} = useParams();
   const reviewMsgRef = useRef('');
   const [tourRating, setTourRating] = useState(null);
+  const {user} = useContext(AuthContext);
 
-  //this is an static data later we will call our API and load our data from database
-  const tour = tourData.find(tour => tour.id === id);
+  //fetch data from database
+  const {data:tour, loading, error} = useFetch(`${BASE_URL}/tours/${id}`);
 
   const {
     photo, 
@@ -35,18 +39,62 @@ const TourDetails = () => {
   const options = { day: "numeric", month: "long", year: "numeric" };
 
   //submit request to the server
-  const submitHandler = e => {
+  const submitHandler = async e => {
     e.preventDefault()
     const reviewText = reviewMsgRef.current.value;
 
+    
+
+    try {
+
+      if(!user || user === undefined || user === null){
+      alert('Please sign in');
+      }
+
+      const reviewObj = {
+        username: user?.username,
+        reviewText,
+        rating: tourRating
+      }
+
+      const res = await fetch(`${BASE_URL}/review/${id}`, {
+        method: 'post',
+        headers: {
+          'content-type':'application/json'
+        },
+        credentials:'include',
+        body: JSON.stringify(reviewObj),
+      });
+
+      const result = await res.json();
+      if(!res.ok) {
+        return alert(result.message);
+      }
+
+      alert(result.message);
+    } catch (err) {
+      alert(err.message);
+    }
+
     // later will call our api
   };
+
+  useEffect(() => {
+    window.scrollTo(0,0);
+  },[tour]);
 
   return (
   <>
   <section>
     <Container>
-      <Row>
+      {
+        loading && <h4 className='text-center pt-5'>Loading........</h4>
+      }
+      {
+        error && <h4 className='text-center pt-5'>{error}</h4>
+      }
+      {
+        !loading && !error && <Row>
         <Col lg='8'>
           <div className="tour__content">
             <img src={photo} alt="" />
@@ -123,7 +171,7 @@ const TourDetails = () => {
               </Form>
 
               <ListGroup className='user__reviews'>
-                {reviews?.map(reviews => (
+                {reviews?.map(review => (
                     <div className='review__item' >
                       <img src={avatar} alt="" />
 
@@ -131,20 +179,21 @@ const TourDetails = () => {
                         <div className='d-flex align-items-center 
                         justify-content-between'>
                           <div>
-                            <h5>Tarako โรยเกลืออ่อนๆ</h5>
+                            <h5>{review.username}</h5>
                             <p>
-                              {new Date("01-26-2023").toLocaleDateString(
+                              {new Date(review.createdAt).toLocaleDateString(
                                 "en-US", 
                                 options
                                 )}
                             </p>
                           </div>
                           <span className='d-flex align-items-center'>
-                          5 <i class="ri-star-s-fill"></i>
+                          {review.rating} 
+                          <i class="ri-star-s-fill"></i>
                           </span>
                         </div>
 
-                        <h6>Amazing tour</h6>
+                        <h6>{review.reviewText}</h6>
                       </div>
                     </div>
                   ))}
@@ -158,6 +207,7 @@ const TourDetails = () => {
           <Booking tour={tour} avgRating={avgRating} />
         </Col>
       </Row>
+      }
     </Container>
   </section>
   <Newsletter />
